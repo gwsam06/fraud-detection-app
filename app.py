@@ -1,27 +1,14 @@
 import streamlit as st
 import pandas as pd
-import pickle
+import joblib
 
 # ==============================
 # PAGE CONFIG
 # ==============================
 st.set_page_config(
     page_title="Fraud Detection Prediction App",
-    layout="centered"
+    layout="wide"
 )
-
-# Dark theme styling
-st.markdown("""
-    <style>
-    body { background-color: #0E1117; color: white; }
-    </style>
-""", unsafe_allow_html=True)
-
-# ==============================
-# TITLE
-# ==============================
-st.title("💳 Fraud Detection Prediction App")
-st.write("Enter transaction details to predict whether it is Fraud or Not Fraud")
 
 # ==============================
 # LOAD MODEL
@@ -29,7 +16,7 @@ st.write("Enter transaction details to predict whether it is Fraud or Not Fraud"
 @st.cache_resource
 def load_model():
     try:
-        model = pickle.load(open("final_fraud_model.pkl", "rb"))
+        model = joblib.load("final_fraud_model.pkl")
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
@@ -37,97 +24,122 @@ def load_model():
 
 model = load_model()
 
-if model is not None:
-    st.success("✅ Model loaded successfully")
-else:
-    st.error("❌ Model not found. Ensure file is in folder.")
+# ==============================
+# LAYOUT (LEFT = RESULT, RIGHT = INPUT)
+# ==============================
+left_col, right_col = st.columns([1, 2])
 
 # ==============================
-# SIDEBAR
+# LEFT COLUMN (SYSTEM + RESULT)
 # ==============================
-st.sidebar.header("⚙️ System Information")
-st.sidebar.write("Model: Fraud Detection ML Model")
-st.sidebar.write("Type: Classification")
+with left_col:
+    st.sidebar.header("⚙️ System Information")
+    st.sidebar.write("Model: Financial Fraud Detection ML Model")
+    st.sidebar.write("Type: Classification")
 
-# ==============================
-# INPUT SECTION
-# ==============================
-st.subheader("📥 Input Transaction Details")
+    st.subheader("📊 Prediction Result")
 
-transaction_type = st.selectbox(
-    "Transaction Type",
-    ["Transfer", "Cash Out", "Payment", "Debit"]
-)
+    result_placeholder = st.empty()
+    prob_placeholder = st.empty()
 
-amount = st.number_input("Amount", min_value=0.0)
-
-oldbalanceOrg = st.number_input("Old Balance (Sender)", min_value=0.0)
-newbalanceOrig = st.number_input("New Balance (Sender)", min_value=0.0)
-
-oldbalanceDest = st.number_input("Old Balance (Receiver)", min_value=0.0)
-newbalanceDest = st.number_input("New Balance (Receiver)", min_value=0.0)
-
-# ==============================
-# VALIDATION
-# ==============================
-if amount <= 0:
-    st.warning("⚠️ Amount must be greater than 0")
-
-# ==============================
-# FEATURE ENGINEERING
-# ==============================
-type_transfer = 1 if transaction_type == "Transfer" else 0
-type_cashout = 1 if transaction_type == "Cash Out" else 0
-
-balance_diff = oldbalanceOrg - newbalanceOrig
-suspicious_flag = 1 if balance_diff > amount else 0
-
-# ==============================
-# PREDICTION (ONLY HERE)
-# ==============================
-if st.button("Predict"):
-
-    if model is None:
-        st.error("Model is not loaded.")
-    elif amount <= 0:
-        st.error("Enter a valid transaction amount.")
+    if model is not None:
+        st.success("✅ Model loaded successfully")
     else:
-        input_data = pd.DataFrame([{
-            'TransactionID': 1,
-            'Amount': amount,
-            'CustomerID': 0,
-            'MerchantID': 0,
-            'AnomalyScore': balance_diff,
-            'Age': 30,
-            'AccountBalance': oldbalanceOrg,
-            'SuspiciousFlag': suspicious_flag,
-            'Category_Online': type_transfer,
-            'Category_Other': 0,
-            'Category_Retail': 0,
-            'Category_Travel': type_cashout
-        }])
+        st.error("❌ Model not found")
 
-        # Prediction
-        prediction = model.predict(input_data)[0]
+    # ==============================
+    # FRAUD SENSITIVITY CONTROL
+    # ==============================
+    st.markdown("### ⚙️ Fraud Sensitivity Control")
 
-        # Probability (safe fallback)
-        try:
-            probability = model.predict_proba(input_data)[0][1]
-        except:
-            probability = None
+    threshold = st.slider(
+        "Set Fraud Detection Threshold (%)",
+        min_value=1,
+        max_value=50,
+        value=5
+    ) / 100
 
-        # ==============================
-        # OUTPUT
-        # ==============================
-        st.subheader("🔍 Prediction Result")
+    st.caption(f"Current Fraud Alert Threshold: {threshold:.0%}")
+    st.caption("Lower threshold = more sensitive (more fraud alerts)")
 
-        if prediction == 1:
-            st.error("🚨 Fraudulent Transaction Detected!")
-            st.write("This transaction shows suspicious financial behaviour.")
+# ==============================
+# RIGHT COLUMN (INPUT FORM ONLY)
+# ==============================
+with right_col:
+    st.title("💳 Fraud Detection Prediction App")
+    st.write("Enter transaction details to predict fraud")
+
+    st.subheader("📥 Input Transaction Details")
+
+    # ==============================
+    # INPUT FIELDS
+    # ==============================
+    col1, col2 = st.columns(2)
+
+    with col1:
+        transaction_type = st.selectbox(
+            "Transaction Type",
+            ["Transfer", "Cash Out", "Payment", "Debit"]
+        )
+        amount = st.number_input("Amount", min_value=0.0)
+        oldbalanceOrg = st.number_input("Old Balance (Sender)", min_value=0.0)
+
+    with col2:
+        newbalanceOrig = st.number_input("New Balance (Sender)", min_value=0.0)
+        oldbalanceDest = st.number_input("Old Balance (Receiver)", min_value=0.0)
+        newbalanceDest = st.number_input("New Balance (Receiver)", min_value=0.0)
+
+    if amount <= 0:
+        st.warning("⚠️ Amount must be greater than 0")
+
+    # ==============================
+    # FEATURE ENGINEERING (ALIGNED)
+    # ==============================
+    type_transfer = 1 if transaction_type == "Transfer" else 0
+    type_cashout = 1 if transaction_type == "Cash Out" else 0
+
+    balance_diff = oldbalanceOrg - amount
+    suspicious_flag = 1 if balance_diff > amount else 0
+
+    # ==============================
+    # PREDICTION (OUTPUT GOES LEFT)
+    # ==============================
+    if st.button("Predict"):
+
+        if model is None:
+            result_placeholder.error("Model not loaded.")
+        elif amount <= 0:
+            result_placeholder.error("Enter valid amount.")
         else:
-            st.success("✅ Legitimate Transaction")
-            st.write("This transaction appears normal.")
+            input_data = pd.DataFrame([{
+                "Amount": amount,
+                "AccountBalance": oldbalanceOrg,
+                "AnomalyScore": 0,
+                "balance_diff": balance_diff,
+                "suspicious_flag": suspicious_flag,
+                "type_transfer": type_transfer,
+                "type_cashout": type_cashout
+            }])
 
-        # Show probability
-        if probability is not None:
-            st.write(f"Fraud Probability: {probability:.2%}")
+            prediction = model.predict(input_data)[0]
+
+            try:
+                probability = model.predict_proba(input_data)[0][1]
+            except:
+                probability = None
+
+            # ==============================
+            # DISPLAY RESULT ON LEFT PANEL (SMART THRESHOLD)
+            # ==============================
+
+            if probability is not None:
+
+                if probability >= threshold:
+                    result_placeholder.error("🚨 Fraudulent Transaction Detected!")
+                else:
+                    result_placeholder.success("✅ Legitimate Transaction")
+
+                prob_placeholder.metric("Fraud Probability", f"{probability:.2%}")
+
+            else:
+                result_placeholder.warning("Prediction made but probability unavailable.")
