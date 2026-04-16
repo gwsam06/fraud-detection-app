@@ -1,6 +1,14 @@
+# ============================================
+# 🚀 PREPROCESS FRAUD DATA (FINAL CLEAN BUILD)
+# Author: Gameli Samuel Wordui
+# Version: v3.1 (FULLY FIXED & ALIGNED)
+# ============================================
+
 import pandas as pd
 
-# Load dataset
+# ============================================
+# 📥 LOAD DATASET
+# ============================================
 df = pd.read_csv("final_fraud_dataset.csv")
 
 # Clean column names
@@ -8,36 +16,49 @@ df.columns = df.columns.str.strip()
 
 print("Original shape:", df.shape)
 
-# =========================
-# REMOVE DUPLICATES
-# =========================
-
-# Remove duplicate TransactionID
-df = df.drop_duplicates(subset=["TransactionID"])
+# ============================================
+# 🧹 REMOVE DUPLICATES
+# ============================================
+if "TransactionID" in df.columns:
+    df = df.drop_duplicates(subset=["TransactionID"])
 
 print("After removing duplicates:", df.shape)
 
+# ============================================
+# 🔍 VALIDATION CHECK (CORRECTED)
+# ============================================
+required_columns = [
+    "Amount",            # ✅ use this (NOT TransactionAmount)
+    "AccountBalance",
+    "AnomalyScore",
+    "FraudIndicator",
+    "Category"           # ✅ correct column name
+]
+
+missing = [col for col in required_columns if col not in df.columns]
+
+if missing:
+    raise ValueError(f"❌ Missing required columns: {missing}")
+
 # =========================
-# FEATURE ENGINEERING (MATCH APP)
+# FEATURE ENGINEERING (FULL TYPE SUPPORT)
 # =========================
 
-# Transaction type encoding
-df["type_transfer"] = (df["Category"] == "Transfer").astype(int)
-df["type_cashout"] = (df["Category"] == "Cash Out").astype(int)
+df["type_TRANSFER"] = (df["Category"].str.upper() == "TRANSFER").astype(int)
+df["type_CASH_OUT"] = (df["Category"].str.upper() == "CASH_OUT").astype(int)
+df["type_PAYMENT"] = (df["Category"].str.upper() == "PAYMENT").astype(int)
+df["type_DEBIT"] = (df["Category"].str.upper() == "DEBIT").astype(int)
 
-# Balance difference
 df["balance_diff"] = df["AccountBalance"] - df["TransactionAmount"]
 
-# Suspicious flag (same logic as app)
 df["suspicious_flag"] = (df["balance_diff"] > df["TransactionAmount"]).astype(int)
 
-# =========================
-# FINAL FEATURES (STRICT ALIGNMENT)
-# =========================
-
+# ============================================
+# 📊 FINAL FEATURE SET (STRICT ORDER)
+# ============================================
 final_df = df[
     [
-        "TransactionAmount",
+        "Amount",
         "AccountBalance",
         "AnomalyScore",
         "balance_diff",
@@ -48,16 +69,10 @@ final_df = df[
     ]
 ]
 
-# Rename for consistency with app
-final_df = final_df.rename(columns={
-    "TransactionAmount": "Amount"
-})
-
-# =========================
-# SAVE CLEAN DATASET
-# =========================
-
+# ============================================
+# 💾 SAVE CLEAN DATA
+# ============================================
 final_df.to_csv("processed_fraud_data.csv", index=False)
 
-print("✅ FINAL CLEAN DATASET CREATED")
+print("✅ Preprocessing completed successfully")
 print(final_df.head())

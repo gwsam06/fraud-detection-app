@@ -1,145 +1,199 @@
 import streamlit as st
-import pandas as pd
+import numpy as np
 import joblib
 
-# ==============================
+# ===============================
 # PAGE CONFIG
-# ==============================
-st.set_page_config(
-    page_title="Fraud Detection Prediction App",
-    layout="wide"
-)
+# ===============================
+st.set_page_config(page_title="Fraud Detection AI System", layout="wide")
 
-# ==============================
+# ===============================
+# GLOBAL STYLE (READABILITY FIX)
+# ===============================
+st.markdown("""
+<style>
+/* Improve caption visibility */
+.css-1cpxqw2, .css-1v0mbdj {
+    color: #CCCCCC !important;
+    font-size: 14px !important;
+}
+
+/* Footer styling */
+.footer-text {
+    text-align: center;
+    font-size: 13px;
+    color: #BBBBBB;
+    line-height: 1.6;
+}
+
+/* Disclaimer styling */
+.disclaimer {
+    font-size: 13px;
+    color: #AAAAAA;
+    margin-top: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ===============================
 # LOAD MODEL
-# ==============================
+# ===============================
 @st.cache_resource
 def load_model():
-    try:
-        model = joblib.load("final_fraud_model.pkl")
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+    return joblib.load("final_fraud_model.pkl")
 
 model = load_model()
 
-# ==============================
-# LAYOUT (LEFT = RESULT, RIGHT = INPUT)
-# ==============================
+# ===============================
+# SAFE INITIALIZATION
+# ===============================
+prediction = None
+probability = None
+
+# ===============================
+# SIDEBAR (CLEANED)
+# ===============================
+# ===============================
+# SIDEBAR (CLEAN + FIXED)
+# ===============================
+with st.sidebar:
+
+    st.markdown("## 🏢 System Information")
+
+    st.success("Model loaded successfully")
+
+    st.markdown("### 👤 Developer Identity")
+    st.markdown("""
+    **Name:** Gameli Samuel Wordui  
+    **Project:** Thrive Africa AI Initiative  
+    **System:** Financial Fraud Detection ML  
+    **Version:** v2.1  
+
+    🌍 *Built under the Thrive Africa Project – advancing AI solutions for financial security and economic resilience across Africa.*
+    """)
+
+    st.markdown("## 🎯 Fraud Sensitivity Control")
+
+    threshold = st.slider("Set Detection Threshold (%)", 1, 100, 5)
+
+    st.caption(f"Current Threshold: {threshold}%")
+    st.caption("Lower = more sensitive detection")
+    
+# ===============================
+# MAIN HEADER
+# ===============================
+st.title("💳 Fraud Detection AI System")
+st.markdown("<span style='color:#A0AEC0;'>Version 2.1 | Enterprise Fraud Risk Engine</span>", unsafe_allow_html=True)
+
 left_col, right_col = st.columns([1, 2])
 
-# ==============================
-# LEFT COLUMN (SYSTEM + RESULT)
-# ==============================
-with left_col:
-    st.sidebar.header("⚙️ System Information")
-    st.sidebar.write("Model: Financial Fraud Detection ML Model")
-    st.sidebar.write("Type: Classification")
+# ===============================
+# TOP LAYOUT (RESULT LEFT, INPUT RIGHT)
+# ===============================
+left_col, right_col = st.columns([1, 2])
 
-    st.subheader("📊 Prediction Result")
+# ===============================
+# INPUT + BUTTON (RIGHT PANEL)
+# ===============================
 
-    result_placeholder = st.empty()
-    prob_placeholder = st.empty()
-
-    if model is not None:
-        st.success("✅ Model loaded successfully")
-    else:
-        st.error("❌ Model not found")
-
-    # ==============================
-    # FRAUD SENSITIVITY CONTROL
-    # ==============================
-    st.markdown("### ⚙️ Fraud Sensitivity Control")
-
-    threshold = st.slider(
-        "Set Fraud Detection Threshold (%)",
-        min_value=1,
-        max_value=50,
-        value=5
-    ) / 100
-
-    st.caption(f"Current Fraud Alert Threshold: {threshold:.0%}")
-    st.caption("Lower threshold = more sensitive (more fraud alerts)")
-
-# ==============================
-# RIGHT COLUMN (INPUT FORM ONLY)
-# ==============================
 with right_col:
-    st.title("💳 Fraud Detection Prediction App")
-    st.write("Enter transaction details to predict fraud")
 
-    st.subheader("📥 Input Transaction Details")
+    st.markdown("## 📥 Input Transaction Details")
 
-    # ==============================
-    # INPUT FIELDS
-    # ==============================
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         transaction_type = st.selectbox(
             "Transaction Type",
-            ["Transfer", "Cash Out", "Payment", "Debit"]
+            ["TRANSFER", "CASH_OUT", "PAYMENT", "DEBIT"]
         )
         amount = st.number_input("Amount", min_value=0.0)
-        oldbalanceOrg = st.number_input("Old Balance (Sender)", min_value=0.0)
 
     with col2:
+        oldbalanceOrg = st.number_input("Old Balance (Sender)", min_value=0.0)
         newbalanceOrig = st.number_input("New Balance (Sender)", min_value=0.0)
+
+    with col3:
         oldbalanceDest = st.number_input("Old Balance (Receiver)", min_value=0.0)
         newbalanceDest = st.number_input("New Balance (Receiver)", min_value=0.0)
 
+    # ✅ BUTTON FIXED INSIDE RIGHT PANEL
+    predict_clicked = st.button("🔍 Predict Fraud", key="predict_main")
+    
+# ===============================
+# MODEL EXECUTION (SAFE)
+# ===============================
+
+if predict_clicked:
+
     if amount <= 0:
-        st.warning("⚠️ Amount must be greater than 0")
+        st.warning("Amount must be greater than 0")
 
-    # ==============================
-    # FEATURE ENGINEERING (ALIGNED)
-    # ==============================
-    type_transfer = 1 if transaction_type == "Transfer" else 0
-    type_cashout = 1 if transaction_type == "Cash Out" else 0
+    else:
+        balance_diff = oldbalanceOrg - newbalanceOrig
+        suspicious_flag = int(balance_diff > amount)
 
-    balance_diff = oldbalanceOrg - amount
-    suspicious_flag = 1 if balance_diff > amount else 0
+        type_TRANSFER = 1 if transaction_type == "TRANSFER" else 0
+        type_CASH_OUT = 1 if transaction_type == "CASH_OUT" else 0
+        type_PAYMENT = 1 if transaction_type == "PAYMENT" else 0
 
-    # ==============================
-    # PREDICTION (OUTPUT GOES LEFT)
-    # ==============================
-    if st.button("Predict"):
+        input_data = np.array([[ 
+            amount,
+            oldbalanceOrg,
+            balance_diff,
+            suspicious_flag,
+            type_TRANSFER,
+            type_CASH_OUT,
+            type_PAYMENT
+        ]])
 
-        if model is None:
-            result_placeholder.error("Model not loaded.")
-        elif amount <= 0:
-            result_placeholder.error("Enter valid amount.")
+        prediction = model.predict(input_data)[0]
+        probability = model.predict_proba(input_data)[0][1]
+
+# ===============================
+# RESULT PANEL (LEFT)
+# ===============================
+with left_col:
+    if probability is not None:
+
+        st.markdown("## 📊 Prediction Result")
+
+        if probability >= threshold / 100:
+            st.markdown(f"""
+            <div style='padding:12px; border-radius:8px; background:#5A1E1E; color:#FFB3B3; font-weight:600;'>
+            🚨 FRAUD DETECTED ({probability:.2%})
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            input_data = pd.DataFrame([{
-                "Amount": amount,
-                "AccountBalance": oldbalanceOrg,
-                "AnomalyScore": 0,
-                "balance_diff": balance_diff,
-                "suspicious_flag": suspicious_flag,
-                "type_transfer": type_transfer,
-                "type_cashout": type_cashout
-            }])
+            st.markdown(f"""
+            <div style='padding:12px; border-radius:8px; background:#1E5A1E; color:#B3FFB3; font-weight:600;'>
+            ✅ SAFE TRANSACTION ({probability:.2%})
+            </div>
+            """, unsafe_allow_html=True)
 
-            prediction = model.predict(input_data)[0]
+        st.markdown("### 🔎 Risk Analysis")
+        st.write(f"Fraud Probability: {probability:.2%}")
 
-            try:
-                probability = model.predict_proba(input_data)[0][1]
-            except:
-                probability = None
+        if probability > 0.8:
+            st.warning("High Risk Transaction")
+        elif probability > 0.5:
+            st.info("Moderate Risk")
+        else:
+            st.markdown("### 🟢 Low Risk")
 
-            # ==============================
-            # DISPLAY RESULT ON LEFT PANEL (SMART THRESHOLD)
-            # ==============================
+# ===============================
+# FOOTER (FINAL POLISHED)
+# ===============================
+st.markdown("""
+<div style='text-align:center; font-size:13px; color:#888; line-height:1.6;'>
 
-            if probability is not None:
+© 2026 Gameli Samuel Wordui | Version 2.1  
+Thrive Africa Project – Financial Fraud Detection AI System  
 
-                if probability >= threshold:
-                    result_placeholder.error("🚨 Fraudulent Transaction Detected!")
-                else:
-                    result_placeholder.success("✅ Legitimate Transaction")
+⚠️ <b>Disclaimer:</b><br>
+This AI system is designed for educational, research, and decision-support purposes only.<br>
+Predictions are probabilistic and should not be used as the sole basis for financial, legal, or operational decisions.<br>
+Users are advised to apply professional judgement, institutional policies, and regulatory compliance standards.
 
-                prob_placeholder.metric("Fraud Probability", f"{probability:.2%}")
-
-            else:
-                result_placeholder.warning("Prediction made but probability unavailable.")
+</div>
+""", unsafe_allow_html=True)
