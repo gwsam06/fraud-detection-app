@@ -174,6 +174,7 @@ with left_col:
         st.markdown("### 🔎 Risk Analysis")
         st.write(f"Fraud Probability: {probability:.2%}")
 
+        # ✅ RISK LEVEL
         if probability >= threshold / 100:
             st.markdown("""
             <div style='padding:12px; border-radius:8px; background:#5A1E1E; color:#FFB3B3; font-weight:600;'>
@@ -196,7 +197,21 @@ with left_col:
             """, unsafe_allow_html=True)
 
         st.progress(float(probability))
- 
+
+        # ✅ CORRECT PLACEMENT (INSIDE RESULT BLOCK)
+        with st.expander("🧠 How the Model Works"):
+            st.info("""
+            This system uses a machine learning model to estimate the probability of fraud.
+
+            - The model outputs a fraud probability (%)
+            - A threshold is used to classify:
+                - Above threshold → Fraud
+                - Below threshold → Safe
+
+            Lower threshold = More sensitive detection  
+            Higher threshold = Fewer false alarms
+            """)
+    
 # ===============================
 # FOOTER (FINAL POLISHED)
 # ===============================
