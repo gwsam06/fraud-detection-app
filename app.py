@@ -65,7 +65,7 @@ with st.sidebar:
     st.markdown("### 👤 Developer Identity")
     st.markdown("""
     **Name:** Gameli Samuel Wordui  
-    **Project:** Thrive Africa AI Initiative  
+    **Project:** Thrive Africa ML and AI Initiative GP 15  
     **System:** Financial Fraud Detection ML  
     **Version:** v2.1  
 
@@ -174,13 +174,29 @@ with left_col:
         st.markdown("### 🔎 Risk Analysis")
         st.write(f"Fraud Probability: {probability:.2%}")
 
-        if probability > 0.8:
-            st.warning("High Risk Transaction")
-        elif probability > 0.5:
-            st.info("Moderate Risk")
-        else:
-            st.markdown("### 🟢 Low Risk")
+        if probability >= threshold / 100:
+            st.markdown("""
+            <div style='padding:12px; border-radius:8px; background:#5A1E1E; color:#FFB3B3; font-weight:600;'>
+            🔴 High Risk Transaction
+            </div>
+            """, unsafe_allow_html=True)
 
+        elif probability >= (threshold / 100) * 0.5:
+            st.markdown("""
+            <div style='padding:12px; border-radius:8px; background:#5A4A1E; color:#FFE699; font-weight:600;'>
+            🟠 Moderate Risk Transaction
+            </div>
+            """, unsafe_allow_html=True)
+
+        else:
+            st.markdown("""
+            <div style='padding:12px; border-radius:8px; background:#1E5A1E; color:#B3FFB3; font-weight:600;'>
+            🟢 Low Risk Transaction
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.progress(float(probability))
+ 
 # ===============================
 # FOOTER (FINAL POLISHED)
 # ===============================
@@ -188,7 +204,7 @@ st.markdown("""
 <div style='text-align:center; font-size:13px; color:#888; line-height:1.6;'>
 
 © 2026 Gameli Samuel Wordui | Version 2.1  
-Thrive Africa Project – Financial Fraud Detection AI System  
+Thrive Africa Project Group 15 – Financial Fraud Detection AI System  
 
 ⚠️ <b>Disclaimer:</b><br>
 This AI system is designed for educational, research, and decision-support purposes only.<br>
